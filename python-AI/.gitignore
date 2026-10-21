@@ -5,3 +5,6 @@ venv/
 .env
 chroma_db/
 .idea/
+
+# 本地启动脚本(含本机绝对路径,不通用)
+start.bat
