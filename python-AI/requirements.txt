@@ -1,0 +1,8 @@
+langchain-openai
+python-dotenv
+fastapi
+uvicorn[standard]
+pydantic
+pymysql
+chromadb>=0.5,<2
+sentence-transformers>=3.0,<4
