@@ -43,6 +43,9 @@ chroma_db/
 Thumbs.db
 desktop.ini
 
+# ===== Impeccable 设计工具(本地状态与缓存) =====
+.impeccable/
+
 # ===== 日志 =====
 logs/
 *.log

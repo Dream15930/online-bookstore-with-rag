@@ -1,81 +1,92 @@
 <template>
-  <footer class="footer">
+  <footer class="footer-band">
     <div class="footer-inner">
-      <div class="footer-brand">
-        <span class="footer-logo">网上书店</span>
-        <p>发现好书，畅享阅读</p>
-      </div>
-      <div class="footer-links">
-        <div class="link-group">
-          <h4>关于我们</h4>
-          <span>公司介绍</span>
-          <span>联系我们</span>
-        </div>
-        <div class="link-group">
-          <h4>帮助中心</h4>
-          <span>购物指南</span>
-          <span>常见问题</span>
-        </div>
-        <div class="link-group">
-          <h4>服务保障</h4>
-          <span>正版承诺</span>
-          <span>退换政策</span>
-        </div>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span>&copy; 2024 网上书店 BookStore. All Rights Reserved.</span>
+      <nav class="links">
+        <span class="grp">
+          <span class="grp-title">支持</span>
+          <button class="flink" @click="openChat">在线客服</button>
+          <span class="ftext">常见问题</span>
+          <span class="ftext">退换政策</span>
+        </span>
+        <span class="grp">
+          <span class="grp-title">关于</span>
+          <span class="ftext">网上书店</span>
+          <span class="ftext">正版承诺</span>
+        </span>
+      </nav>
+      <span class="legal">&copy; 2024 网上书店 BookStore. 保留所有权利。</span>
     </div>
   </footer>
 </template>
 
+<script setup>
+import { useChatStore } from '../stores/chat'
+
+const chatStore = useChatStore()
+function openChat() {
+  chatStore.open()
+}
+</script>
+
 <style scoped>
-.footer {
-  background: #1f2937;
-  color: #d1d5db;
-  margin-top: 60px;
+/* 压缩成一条，钉在界面底端 */
+.footer-band {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  background: var(--canvas-parchment);
+  border-top: 1px solid var(--hairline);
 }
 .footer-inner {
-  max-width: 1280px;
+  max-width: 1440px;
+  min-height: 56px;
   margin: 0 auto;
-  padding: 48px 24px 32px;
+  padding: 10px 24px;
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 8px 32px;
   flex-wrap: wrap;
-  gap: 40px;
 }
-.footer-brand .footer-logo {
-  font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-}
-.footer-brand p {
-  margin-top: 8px;
-  font-size: 14px;
-  color: #9ca3af;
-}
-.footer-links {
+
+.links {
   display: flex;
-  gap: 48px;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
 }
-.link-group h4 {
-  color: #fff;
-  font-size: 14px;
-  margin-bottom: 12px;
+.grp {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.link-group span {
-  display: block;
+.grp-title {
+  font-family: var(--font-text);
   font-size: 13px;
-  margin-bottom: 6px;
-  cursor: pointer;
-  transition: color 0.2s;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--ink);
 }
-.link-group span:hover { color: #fff; }
-.footer-bottom {
-  border-top: 1px solid #374151;
-  padding: 20px 24px;
-  text-align: center;
+.ftext,
+.flink {
+  font-family: var(--font-text);
   font-size: 13px;
-  color: #6b7280;
+  letter-spacing: -0.2px;
+  color: var(--ink-muted-80);
+  background: none;
+  border: none;
+  padding: 0;
+  white-space: nowrap;
+}
+.ftext { cursor: default; }
+.flink { cursor: pointer; }
+.flink:hover { color: var(--primary); }
+
+.legal {
+  font-family: var(--font-text);
+  font-size: 12px;
+  letter-spacing: -0.12px;
+  color: var(--ink-muted-80);
+  white-space: nowrap;
 }
 </style>

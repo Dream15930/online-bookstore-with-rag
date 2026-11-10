@@ -2,25 +2,26 @@
   <div class="admin-page">
     <AdminSidebar />
     <div class="admin-main">
-      <div class="page-header">
-        <h2>用户管理</h2>
-        <el-button v-if="isSuperAdmin" type="primary" @click="openAddDialog"><el-icon><Plus /></el-icon> 新增管理员</el-button>
+      <div class="page-head">
+        <h2 class="page-title">用户管理</h2>
+        <button v-if="isSuperAdmin" class="pill small" @click="openAddDialog">新增管理员</button>
       </div>
-      <div class="table-card">
-        <el-table :data="users" v-loading="loading" border stripe>
+
+      <div class="admin-panel">
+        <el-table :data="users" v-loading="loading">
           <el-table-column label="ID" prop="id" width="60" />
           <el-table-column label="用户名" prop="username" width="150" />
-          <el-table-column label="角色" width="100" align="center">
+          <el-table-column label="角色" width="120" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.role==='super_admin'?'danger':row.role==='admin'?'warning':'primary'" size="small">
-                {{ row.role==='super_admin'?'超级管理员':row.role==='admin'?'管理员':'会员' }}
-              </el-tag>
+              <span class="chip" :class="{ on: row.role !== 'member' }">
+                {{ row.role === 'super_admin' ? '超级管理员' : row.role === 'admin' ? '管理员' : '会员' }}
+              </span>
             </template>
           </el-table-column>
           <el-table-column label="地址" prop="address" min-width="200" show-overflow-tooltip />
           <el-table-column label="状态" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.status===1?'success':'info'" size="small">{{ row.status===1?'正常':'停用' }}</el-tag>
+              <span class="chip" :class="{ on: row.status === 1 }">{{ row.status === 1 ? '正常' : '停用' }}</span>
             </template>
           </el-table-column>
           <el-table-column label="注册时间" width="180" align="center">
@@ -28,9 +29,9 @@
           </el-table-column>
           <el-table-column label="操作" width="100" align="center">
             <template #default="{ row }">
-              <el-button v-if="canToggle(row)" size="small" :type="row.status===1?'warning':'success'" @click="toggle(row.id)">
-                {{ row.status===1?'停用':'启用' }}
-              </el-button>
+              <button v-if="canToggle(row)" class="link-btn" @click="toggle(row.id)">
+                {{ row.status === 1 ? '停用' : '启用' }}
+              </button>
             </template>
           </el-table-column>
         </el-table>
@@ -47,8 +48,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible=false">取消</el-button>
-        <el-button type="primary" @click="handleCreate" :loading="saving">创建</el-button>
+        <button class="link-btn" @click="dialogVisible = false">取消</button>
+        <button class="pill" :disabled="saving" @click="handleCreate">{{ saving ? '创建中…' : '创建' }}</button>
       </template>
     </el-dialog>
   </div>
@@ -70,31 +71,34 @@ function canToggle(row) {
   return true
 }
 
-const users=ref([]), loading=ref(false), saving=ref(false)
-const dialogVisible=ref(false), formRef=ref(null)
-const form=reactive({username:'',password:''})
-const rules={
-  username:[{required:true,message:'请输入用户名',trigger:'blur'}],
-  password:[{required:true,message:'请输入密码',trigger:'blur'}]
+const users = ref([]), loading = ref(false), saving = ref(false)
+const dialogVisible = ref(false), formRef = ref(null)
+const form = reactive({ username: '', password: '' })
+const rules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
-async function loadUsers() { loading.value=true; try { const r=await getAdminUsers(); users.value=r.data } finally { loading.value=false } }
+async function loadUsers() { loading.value = true; try { const r = await getAdminUsers(); users.value = r.data } finally { loading.value = false } }
 async function toggle(id) { await toggleUserStatus(id); ElMessage.success('状态已更新'); loadUsers() }
-function openAddDialog() { form.username=''; form.password=''; dialogVisible.value=true }
+function openAddDialog() { form.username = ''; form.password = ''; dialogVisible.value = true }
 async function handleCreate() {
-  const valid = await formRef.value.validate().catch(()=>false)
+  const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
-  saving.value=true
-  try { await createAdmin(form); ElMessage.success('管理员创建成功'); dialogVisible.value=false; loadUsers() } finally { saving.value=false }
+  saving.value = true
+  try { await createAdmin(form); ElMessage.success('管理员创建成功'); dialogVisible.value = false; loadUsers() } finally { saving.value = false }
 }
 
 onMounted(loadUsers)
 </script>
 
 <style scoped>
-.admin-page { display: flex; gap: 24px; }
-.admin-main { flex: 1; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.page-header h2 { font-size: 22px; font-weight: 700; margin: 0; }
-.table-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
 </style>

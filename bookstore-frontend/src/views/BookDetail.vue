@@ -1,94 +1,77 @@
 <template>
-  <div class="detail-page" v-loading="loading">
-    <div class="breadcrumb">
-      <router-link to="/">首页</router-link>
-      <span>/</span>
-      <span>{{ book?.categoryName || '图书详情' }}</span>
-      <span>/</span>
-      <span class="current">{{ book?.title }}</span>
-    </div>
+  <div class="detail" v-loading="loading">
+    <nav class="crumbs">
+      <router-link to="/" class="crumb-link">首页</router-link>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-text">{{ book?.categoryName || '图书详情' }}</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-current">{{ book?.title }}</span>
+    </nav>
 
-    <div class="detail-card" v-if="book">
-      <div class="detail-cover-col">
-        <template v-if="book.coverUrl">
-          <el-image :src="book.coverUrl" fit="cover" class="cover-img">
-            <template #error>
-              <div class="detail-cover-css" :style="coverStyle">
-                <span class="dc-cat">{{ book.categoryName }}</span>
-                <span class="dc-title">{{ book.title }}</span>
-                <span class="dc-author">{{ book.author }}</span>
-              </div>
-            </template>
-          </el-image>
-        </template>
-        <div v-else class="detail-cover-css" :style="coverStyle">
-          <span class="dc-cat">{{ book.categoryName }}</span>
-          <span class="dc-title">{{ book.title }}</span>
-          <span class="dc-author">{{ book.author }}</span>
+    <!-- product tile -->
+    <section class="tile tile-light product" v-if="book">
+      <div class="product-media">
+        <img v-if="book.coverUrl" :src="book.coverUrl" :alt="book.title" class="product-cover" />
+        <div v-else class="cover-fallback">
+          <span class="fallback-cat">{{ book.categoryName }}</span>
+          <span class="fallback-title">{{ book.title }}</span>
+          <span class="fallback-author">{{ book.author }}</span>
         </div>
       </div>
 
-      <div class="detail-info-col">
-        <div class="detail-badge" v-if="book.stock > 0">在售</div>
-        <div class="detail-badge soldout" v-else>售罄</div>
-        <h1 class="detail-title">{{ book.title }}</h1>
-        <div class="detail-row">
-          <span class="label">作者</span>
-          <span class="value">{{ book.author }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">ISBN</span>
-          <span class="value">{{ book.isbn || '暂无' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">分类</span>
-          <span class="value cat-tag">{{ book.categoryName }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="label">库存</span>
-          <span class="value" :class="{ 'low-stock': book.stock < 10 }">{{ book.stock }} 本</span>
-        </div>
+      <div class="product-info">
+        <h1 class="product-title">{{ book.title }}</h1>
+        <p class="product-author">{{ book.author }}</p>
+        <p class="product-price">&yen;{{ book.price }}</p>
 
-        <div class="price-box">
-          <span class="price-symbol">&yen;</span>
-          <span class="price-number">{{ book.price }}</span>
-        </div>
+        <dl class="spec">
+          <div class="spec-row"><dt>ISBN</dt><dd>{{ book.isbn || '暂无' }}</dd></div>
+          <div class="spec-row"><dt>分类</dt><dd>{{ book.categoryName }}</dd></div>
+          <div class="spec-row">
+            <dt>库存</dt>
+            <dd :class="{ low: book.stock < 10 }">{{ book.stock }} 本</dd>
+          </div>
+        </dl>
 
-        <div class="detail-actions">
-          <el-button type="primary" size="large" :disabled="!userStore.isLoggedIn || userStore.isAdmin || book.stock <= 0"
-            @click="addCart" class="add-cart-btn">
-            <el-icon><ShoppingCart /></el-icon> 加入购物车
-          </el-button>
-          <p v-if="!userStore.isLoggedIn" class="login-tip">
-            请先 <router-link to="/login">登录</router-link> 成为会员后购买
+        <div class="actions">
+          <button class="pill" :disabled="!canBuy" @click="addCart">加入购物车</button>
+          <p v-if="!userStore.isLoggedIn" class="note">
+            请先 <router-link to="/login" class="text-link">登录</router-link> 成为会员后购买
           </p>
+          <p v-else-if="book.stock <= 0" class="note">已售罄</p>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="detail-section" v-if="book?.description">
-      <h3 class="section-title">图书简介</h3>
-      <div class="desc-content">{{ book.description }}</div>
-    </div>
-
-    <div class="detail-section">
-      <h3 class="section-title">用户评价（{{ reviews.length }}）</h3>
-      <div class="review-list" v-if="reviews.length">
-        <div class="review-item" v-for="r in reviews" :key="r.id">
-          <div class="review-head">
-            <span class="review-user">{{ r.username }}</span>
-            <el-rate v-model="r.rating" disabled show-score size="small" />
-            <span class="review-date">{{ r.createdAt }}</span>
-          </div>
-          <div class="review-body">{{ r.content }}</div>
-          <div class="review-reply" v-if="r.adminReply">
-            <span class="reply-label">管理员回复：</span>
-            <span>{{ r.adminReply }}</span>
-          </div>
-        </div>
+    <!-- description tile -->
+    <section class="tile tile-parchment" v-if="book?.description">
+      <div class="prose">
+        <h2 class="section-title">图书简介</h2>
+        <p class="section-body">{{ book.description }}</p>
       </div>
-      <div class="no-review" v-else>暂无评价，购买后快来评价吧</div>
-    </div>
+    </section>
+
+    <!-- reviews tile -->
+    <section class="tile tile-light">
+      <div class="prose">
+        <h2 class="section-title">用户评价（{{ reviews.length }}）</h2>
+
+        <div class="reviews" v-if="reviews.length">
+          <article class="review" v-for="r in reviews" :key="r.id">
+            <div class="review-head">
+              <span class="review-user">{{ r.username }}</span>
+              <el-rate v-model="r.rating" disabled size="small" />
+              <span class="review-date">{{ r.createdAt }}</span>
+            </div>
+            <p class="review-body">{{ r.content }}</p>
+            <p class="review-reply" v-if="r.adminReply">
+              <span class="reply-label">管理员回复</span>{{ r.adminReply }}
+            </p>
+          </article>
+        </div>
+        <p class="no-review" v-else>暂无评价，购买后快来评价吧</p>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -109,11 +92,9 @@ const book = ref(null)
 const reviews = ref([])
 const loading = ref(false)
 
-const gradients = ['#1e3a5f,#3b5998','#1d4ed8,#7c3aed','#059669,#0d9488','#dc2626,#ea580c','#7c3aed,#db2777','#0f766e,#0284c7','#b45309,#b91c1c','#4338ca,#2563eb','#166534,#15803d','#9a3412,#c2410c']
-const coverStyle = computed(() => {
-  const idx = ((book.value?.id || 1) % gradients.length)
-  return { background: `linear-gradient(135deg, ${gradients[idx]})` }
-})
+const canBuy = computed(() =>
+  userStore.isLoggedIn && !userStore.isAdmin && (book.value?.stock ?? 0) > 0
+)
 
 async function addCart() {
   try {
@@ -133,90 +114,250 @@ async function loadReviews() {
 onMounted(async () => {
   loading.value = true
   try {
-    const [bk, _] = await Promise.all([getBookDetail(route.params.id), loadReviews()])
+    const [bk] = await Promise.all([getBookDetail(route.params.id), loadReviews()])
     book.value = bk.data
   } finally { loading.value = false }
 })
 </script>
 
 <style scoped>
-.detail-page { max-width: 960px; margin: 0 auto; }
-.breadcrumb {
-  font-size: 13px; color: var(--text-secondary); margin-bottom: 24px;
-  display: flex; gap: 8px; align-items: center;
+/* ─── breadcrumb ─── */
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px 0;
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink-muted-80);
 }
-.breadcrumb a { color: var(--text-secondary); text-decoration: none; }
-.breadcrumb a:hover { color: var(--primary); }
-.breadcrumb .current { color: var(--text); font-weight: 500; }
+.crumb-link {
+  color: var(--primary);
+  text-decoration: none;
+}
+.crumb-link:hover { text-decoration: underline; }
+.crumb-current { color: var(--ink); }
 
-.detail-card {
-  background: var(--white); border-radius: var(--radius);
-  padding: 36px; display: flex; gap: 44px;
-  border: 1px solid var(--border);
+/* ─── tiles ─── */
+.tile { padding: var(--sp-section) var(--sp-lg); }
+.tile-light { background: var(--canvas); }
+.tile-parchment { background: var(--canvas-parchment); }
+
+/* ─── product ─── */
+.product {
+  display: flex;
+  align-items: center;
+  gap: 64px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.product-media {
+  flex: 0 0 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.product-cover {
+  width: 100%;
+  max-width: 360px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--product-shadow);
+}
+.cover-fallback {
+  width: 300px;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  background: var(--canvas-parchment);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--product-shadow);
+  text-align: center;
+}
+.fallback-cat {
+  font-family: var(--font-text);
+  font-size: 12px;
+  letter-spacing: -0.12px;
+  color: var(--ink-muted-80);
+}
+.fallback-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.14;
+  letter-spacing: 0.196px;
+  color: var(--ink);
+}
+.fallback-author {
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink-muted-80);
 }
 
-.cover-img { width: 300px; height: 400px; border-radius: var(--radius-sm); flex-shrink: 0; }
-.cover-fb {
-  width: 300px; height: 400px; border-radius: var(--radius-sm);
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 8px; background: linear-gradient(135deg, #e0e7ff, #dbeafe);
-  color: #6366f1; font-size: 32px; font-weight: 700;
+.product-info { flex: 1; min-width: 0; }
+.product-title {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.374px;
+  color: var(--ink);
 }
-.detail-cover-css {
-  width: 300px; height: 400px; border-radius: var(--radius-sm); flex-shrink: 0;
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; text-align: center; gap: 14px;
-  color: rgba(255,255,255,0.92); padding: 32px 24px;
+.product-author {
+  margin-top: 8px;
+  font-family: var(--font-text);
+  font-size: 17px;
+  letter-spacing: -0.374px;
+  color: var(--ink-muted-80);
 }
-.dc-cat {
-  font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
-  border: 1px solid rgba(255,255,255,0.45); padding: 3px 16px; border-radius: 3px;
+.product-price {
+  margin-top: 20px;
+  font-family: var(--font-text);
+  font-size: 24px;
+  letter-spacing: -0.374px;
+  color: var(--ink);
 }
-.dc-title { font-size: 26px; font-weight: 800; line-height: 1.3; }
-.dc-author { font-size: 14px; opacity: 0.75; font-style: italic; }
 
-.detail-info-col { flex: 1; }
-.detail-badge {
-  display: inline-block; font-size: 12px; font-weight: 600;
-  padding: 4px 12px; border-radius: 4px; background: #ecfdf5; color: #059669;
-  margin-bottom: 8px;
+.spec { margin-top: 28px; }
+.spec-row {
+  display: flex;
+  gap: 24px;
+  padding: 12px 0;
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-text);
+  font-size: 17px;
+  letter-spacing: -0.374px;
 }
-.detail-badge.soldout { background: #fef2f2; color: #dc2626; }
-
-.detail-title { font-size: 26px; font-weight: 700; margin-bottom: 20px; line-height: 1.3; }
-
-.detail-row {
-  display: flex; gap: 20px; padding: 8px 0;
-  font-size: 14px; border-bottom: 1px solid #f3f4f6;
+.spec-row:last-child { border-bottom: 1px solid var(--hairline); }
+.spec-row dt {
+  width: 72px;
+  flex-shrink: 0;
+  color: var(--ink-muted-80);
 }
-.detail-row .label { color: var(--text-secondary); width: 48px; flex-shrink: 0; }
-.cat-tag {
-  background: var(--primary-light); color: var(--primary);
-  padding: 1px 10px; border-radius: 4px; font-size: 12px; font-weight: 500;
+.spec-row dd { color: var(--ink); }
+.spec-row dd.low { font-weight: 600; }
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 32px;
 }
-.low-stock { color: var(--danger); font-weight: 600; }
+.note {
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink-muted-80);
+}
+.text-link {
+  color: var(--primary);
+  text-decoration: none;
+}
+.text-link:hover { text-decoration: underline; }
 
-.price-box { margin: 24px 0; }
-.price-symbol { font-size: 20px; color: var(--danger); font-weight: 600; }
-.price-number { font-size: 38px; color: var(--danger); font-weight: 800; letter-spacing: -1px; }
+/* ─── prose sections ─── */
+.prose { max-width: 980px; margin: 0 auto; }
+.section-title {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.47;
+  letter-spacing: -0.374px;
+  color: var(--ink);
+}
+.section-body {
+  margin-top: 16px;
+  font-family: var(--font-text);
+  font-size: 17px;
+  line-height: 1.47;
+  letter-spacing: -0.374px;
+  color: var(--ink);
+}
 
-.detail-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.add-cart-btn { padding: 14px 32px; font-size: 16px; height: auto; border-radius: 10px; }
-.login-tip { font-size: 13px; color: var(--text-secondary); }
-.login-tip a { color: var(--primary); font-weight: 600; }
+/* ─── reviews ─── */
+.reviews { margin-top: 24px; }
+.review {
+  padding: 24px 0;
+  border-top: 1px solid var(--hairline);
+}
+.review:first-child { border-top: none; }
+.review-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.review-user {
+  font-family: var(--font-text);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.374px;
+  color: var(--ink);
+}
+.review-date {
+  margin-left: auto;
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink-muted-80);
+}
+.review-body {
+  margin-top: 8px;
+  font-family: var(--font-text);
+  font-size: 17px;
+  line-height: 1.47;
+  letter-spacing: -0.374px;
+  color: var(--ink);
+}
+.review-reply {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--canvas-parchment);
+  border-radius: var(--radius-md);
+  font-family: var(--font-text);
+  font-size: 15px;
+  letter-spacing: -0.24px;
+  color: var(--ink-muted-80);
+}
+.reply-label {
+  margin-right: 6px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.no-review {
+  padding: 24px 0;
+  font-family: var(--font-text);
+  font-size: 17px;
+  color: var(--ink-muted-80);
+}
 
-.detail-section { margin-top: 32px; background: var(--white); border-radius: var(--radius); padding: 32px 36px; border: 1px solid var(--border); }
-.section-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
-.desc-content { color: var(--text-secondary); line-height: 2; font-size: 15px; }
+.review-head :deep(.el-rate) {
+  --el-rate-fill-color: var(--ink);
+  --el-rate-void-color: var(--hairline);
+  --el-rate-disabled-void-color: var(--hairline);
+}
 
-.review-item { padding: 18px 0; border-bottom: 1px solid #f3f4f6; }
-.review-item:last-child { border-bottom: none; }
-.review-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.review-user { font-weight: 600; font-size: 14px; }
-.review-date { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
-.review-body { font-size: 14px; color: var(--text); line-height: 1.6; }
-.review-reply { margin-top: 10px; padding: 10px 14px; background: #f0fdf4; border-radius: 6px; font-size: 13px; color: #166534; border-left: 3px solid #22c55e; }
-.reply-label { font-weight: 600; }
-.no-review { text-align: center; color: var(--text-secondary); padding: 20px 0; font-size: 14px; }
-
+/* ─── responsive ─── */
+@media (max-width: 833px) {
+  .tile { padding: 48px 20px; }
+  .crumbs { padding: 16px 20px 0; }
+  .product {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 32px;
+  }
+  .product-media { flex: none; }
+  .product-cover { margin: 0 auto; max-width: 260px; }
+  .cover-fallback { margin: 0 auto; }
+  .product-title { font-size: 34px; }
+  .section-title { font-size: 28px; }
+}
 </style>

@@ -2,34 +2,36 @@
   <div class="admin-page">
     <AdminSidebar />
     <div class="admin-main">
-      <h2>订单管理</h2>
-      <div class="table-card">
-        <el-table :data="orders" v-loading="loading" border stripe>
-          <el-table-column label="订单号" prop="orderNo" width="200" />
-          <el-table-column label="用户" prop="username" width="120" />
-          <el-table-column label="金额" width="100" align="center">
+      <h2 class="page-title">订单管理</h2>
+
+      <div class="admin-panel table-panel">
+        <el-table :data="orders" v-loading="loading">
+          <el-table-column label="订单号" prop="orderNo" width="205" />
+          <el-table-column label="用户" prop="username" width="95" />
+          <el-table-column label="金额" width="90" align="center">
             <template #default="{ row }"><b>&yen;{{ row.totalAmount }}</b></template>
           </el-table-column>
-          <el-table-column label="地址" prop="address" min-width="200" show-overflow-tooltip />
-          <el-table-column label="状态" width="100" align="center">
+          <el-table-column label="地址" prop="address" min-width="140" show-overflow-tooltip />
+          <el-table-column label="状态" width="90" align="center">
             <template #default="{ row }">
-              <el-tag :type="typeMap[row.status]" size="small">{{ textMap[row.status] }}</el-tag>
+              <span class="chip" :class="{ on: row.status === 'completed' }">{{ textMap[row.status] }}</span>
             </template>
           </el-table-column>
           <el-table-column label="时间" width="180" align="center">
             <template #default="{ row }">{{ row.createdAt }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="180" align="center">
+          <el-table-column label="操作" width="110" align="center">
             <template #default="{ row }">
-              <el-button size="small" @click="showDetail(row.id)">详情</el-button>
-              <el-button v-if="row.status==='paid'" type="primary" size="small" @click="ship(row.id)">发货</el-button>
-              <span v-else-if="row.status==='shipped'" class="done-text">已发货</span>
+              <button class="link-btn" @click="showDetail(row.id)">详情</button>
+              <button v-if="row.status === 'paid'" class="link-btn" @click="ship(row.id)">发货</button>
             </template>
           </el-table-column>
         </el-table>
       </div>
-      <div class="pagination" v-if="total > pageSize">
-        <el-pagination background layout="prev, pager, next" :total="total" :page-size="pageSize" v-model:current-page="page" @current-change="loadOrders" />
+
+      <div class="pager" v-if="total > pageSize">
+        <el-pagination layout="prev, pager, next" :total="total" :page-size="pageSize"
+          v-model:current-page="page" @current-change="loadOrders" />
       </div>
     </div>
 
@@ -37,30 +39,31 @@
     <el-dialog title="订单详情" v-model="dialogVisible" width="650px" destroy-on-close>
       <div v-loading="detailLoading">
         <template v-if="detail">
-          <div class="detail-header">
+          <div class="d-header">
             <div>
               <span class="d-label">订单号</span>
               <div class="d-value">{{ detail.orderNo }}</div>
             </div>
-            <el-tag :type="typeMap[detail.status]" size="large">{{ textMap[detail.status] }}</el-tag>
+            <span class="chip" :class="{ on: detail.status === 'completed' }">{{ textMap[detail.status] }}</span>
           </div>
-          <div class="d-row"><span>用户</span><span>{{ detail.username }}</span></div>
-          <div class="d-row"><span>收货地址</span><span>{{ detail.address }}</span></div>
-          <div class="d-row"><span>下单时间</span><span>{{ detail.createdAt }}</span></div>
+
+          <div class="d-row"><span class="d-key">用户</span><span>{{ detail.username }}</span></div>
+          <div class="d-row"><span class="d-key">收货地址</span><span>{{ detail.address }}</span></div>
+          <div class="d-row"><span class="d-key">下单时间</span><span>{{ detail.createdAt }}</span></div>
 
           <h4 class="d-section">商品明细</h4>
           <div class="d-item" v-for="item in detail.items" :key="item.id">
-            <span class="di-name">{{ item.title }} × {{ item.quantity }}</span>
-            <span class="di-price">&yen;{{ (item.price * item.quantity).toFixed(2) }}</span>
+            <span>{{ item.title }} × {{ item.quantity }}</span>
+            <span class="d-price">&yen;{{ (item.price * item.quantity).toFixed(2) }}</span>
           </div>
 
-          <div class="d-total">合计 <b>&yen;{{ detail.totalAmount }}</b></div>
+          <div class="d-total">合计 <span class="d-sum">&yen;{{ detail.totalAmount }}</span></div>
 
-          <div class="d-section" v-if="detail.review">
-            <h4>用户评价</h4>
+          <template v-if="detail.review">
+            <h4 class="d-section">用户评价</h4>
             <el-rate v-model="detail.review.rating" disabled show-score size="small" />
             <p class="d-review">{{ detail.review.content }}</p>
-          </div>
+          </template>
         </template>
       </div>
     </el-dialog>
@@ -73,13 +76,12 @@ import AdminSidebar from './AdminSidebar.vue'
 import { getAdminOrders, updateOrderStatus, getAdminOrderDetail } from '../../api/admin'
 import { ElMessage } from 'element-plus'
 
-const orders=ref([]), loading=ref(false), page=ref(1), pageSize=10, total=ref(0)
-const dialogVisible=ref(false), detail=ref(null), detailLoading=ref(false)
-const typeMap={pending:'info',paid:'warning',shipped:'primary',completed:'success'}
-const textMap={pending:'待支付',paid:'已支付',shipped:'已发货',completed:'已完成'}
+const orders = ref([]), loading = ref(false), page = ref(1), pageSize = 10, total = ref(0)
+const dialogVisible = ref(false), detail = ref(null), detailLoading = ref(false)
+const textMap = { pending: '待支付', paid: '已支付', shipped: '已发货', completed: '已完成' }
 
-async function loadOrders() { loading.value=true; try { const r=await getAdminOrders({page:page.value,size:pageSize}); orders.value=r.data.records; total.value=r.data.total } finally { loading.value=false } }
-async function ship(id) { await updateOrderStatus(id,'shipped'); ElMessage.success('已发货'); loadOrders() }
+async function loadOrders() { loading.value = true; try { const r = await getAdminOrders({ page: page.value, size: pageSize }); orders.value = r.data.records; total.value = r.data.total } finally { loading.value = false } }
+async function ship(id) { await updateOrderStatus(id, 'shipped'); ElMessage.success('已发货'); loadOrders() }
 
 async function showDetail(id) {
   dialogVisible.value = true
@@ -94,26 +96,99 @@ onMounted(loadOrders)
 </script>
 
 <style scoped>
-.admin-page { display: flex; gap: 24px; }
-.admin-main { flex: 1; }
-.admin-main h2 { font-size: 22px; font-weight: 700; margin-bottom: 16px; }
-.table-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
-.done-text { font-size: 13px; color: var(--text-secondary); }
-.pagination { display: flex; justify-content: center; margin-top: 20px; }
+/* reserve a full page of rows so the pager keeps one position across pages */
+.table-panel {
+  margin-top: 24px;
+  min-height: 570px;
+}
+.pager { display: flex; justify-content: center; margin-top: 24px; }
+.link-btn + .link-btn { margin-left: 16px; }
 
-.detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f3f4f6; }
-.d-label { font-size: 12px; color: var(--text-secondary); }
-.d-value { font-size: 16px; font-weight: 600; margin-top: 2px; }
-.d-row { display: flex; gap: 20px; padding: 6px 0; font-size: 14px; }
-.d-row span:first-child { color: var(--text-secondary); width: 70px; flex-shrink: 0; }
+.d-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.d-label {
+  font-family: var(--font-text);
+  font-size: 12px;
+  letter-spacing: -0.12px;
+  color: var(--ink-muted-80);
+}
+.d-value {
+  margin-top: 4px;
+  font-family: var(--font-text);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.374px;
+  color: var(--ink);
+}
 
-.d-section { font-size: 15px; font-weight: 600; margin: 16px 0 10px; padding-top: 12px; border-top: 1px solid #f3f4f6; }
-.d-item { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
-.di-name { color: var(--text); }
-.di-price { font-weight: 600; }
+.d-row {
+  display: flex;
+  gap: 20px;
+  padding: 8px 0;
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink);
+}
+.d-key { width: 72px; flex-shrink: 0; color: var(--ink-muted-80); }
 
-.d-total { text-align: right; font-size: 15px; padding: 12px 0; border-top: 1px solid var(--border); margin-top: 8px; }
-.d-total b { font-size: 22px; color: var(--danger); margin-left: 8px; }
+.d-section {
+  margin: 20px 0 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-text);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.24px;
+  color: var(--ink);
+}
+.d-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink);
+}
+.d-price { font-weight: 600; white-space: nowrap; }
 
-.d-review { margin-top: 8px; font-size: 14px; color: var(--text-secondary); }
+.d-total {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-text);
+  font-size: 15px;
+  letter-spacing: -0.24px;
+  color: var(--ink-muted-80);
+}
+.d-sum {
+  font-size: 22px;
+  letter-spacing: -0.374px;
+  color: var(--ink);
+}
+.d-review {
+  margin-top: 8px;
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink-muted-80);
+}
+
+:deep(.el-rate) {
+  --el-rate-fill-color: var(--ink);
+  --el-rate-void-color: var(--hairline);
+  --el-rate-disabled-void-color: var(--hairline);
+}
 </style>

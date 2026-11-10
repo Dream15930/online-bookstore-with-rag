@@ -3,6 +3,7 @@ package com.bookstore.controller;
 import com.bookstore.exception.BizException;
 import com.bookstore.util.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -23,6 +24,12 @@ public class GlobalExceptionHandler {
             .map(f -> f.getField() + ": " + f.getDefaultMessage())
             .reduce((a, b) -> a + "; " + b).orElse("参数校验失败");
         return Result.error(400, msg);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public Result<Void> handleUnreadable(HttpMessageNotReadableException e) {
+        log.warn("请求体解析失败: {}", e.getMessage());
+        return Result.error(400, "请求参数格式错误");
     }
 
     @ExceptionHandler(RuntimeException.class)

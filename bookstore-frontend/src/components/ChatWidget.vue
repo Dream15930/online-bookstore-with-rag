@@ -2,8 +2,8 @@
   <div class="chat-widget">
     <!-- 折叠状态：浮动按钮 -->
     <Transition name="btn-fade">
-      <button v-if="!visible" class="chat-toggle-btn" @click="openWidget" title="智能客服">
-        <el-icon :size="26"><ChatDotRound /></el-icon>
+      <button v-if="!visible" class="chat-toggle-btn" @click="chatStore.open()" title="在线客服">
+        <el-icon :size="24"><ChatDotRound /></el-icon>
         <span v-if="hasUnread" class="unread-dot"></span>
       </button>
     </Transition>
@@ -14,14 +14,16 @@
         <!-- 头部 -->
         <div class="chat-header">
           <div class="chat-header-left">
-            <el-avatar :size="36" icon="UserFilled" class="chat-avatar" />
+            <div class="chat-avatar">
+              <el-icon :size="18"><Service /></el-icon>
+            </div>
             <div>
               <div class="chat-title">书虫小助手</div>
-              <div class="chat-subtitle">智能客服 · 在线</div>
+              <div class="chat-subtitle">在线客服</div>
             </div>
           </div>
-          <button class="chat-close-btn" @click="visible = false" title="收起">
-            <el-icon :size="18"><Close /></el-icon>
+          <button class="chat-close-btn" @click="chatStore.close()" title="收起">
+            <el-icon :size="16"><Close /></el-icon>
           </button>
         </div>
 
@@ -29,10 +31,15 @@
         <div class="chat-messages" ref="messagesContainer">
           <!-- 欢迎消息 -->
           <div v-if="messages.length === 0" class="welcome-bubble">
-            <div class="welcome-icon">📚</div>
+            <div class="welcome-icon">
+              <el-icon :size="24"><Reading /></el-icon>
+            </div>
             <div class="welcome-text">
               您好！我是<strong>书虫小助手</strong>，很高兴为您服务。<br />
               您可以问我图书推荐、下单流程、网站使用等问题，请问有什么可以帮您的？
+            </div>
+            <div class="asks">
+              <button v-for="q in sampleAsks" :key="q" class="ask" @click="ask(q)">{{ q }}</button>
             </div>
           </div>
 
@@ -68,7 +75,7 @@
         <div class="chat-input-area">
           <el-input
             v-model="inputText"
-            placeholder="输入您的问题..."
+            placeholder="输入您的问题"
             :disabled="isTyping"
             maxlength="500"
             @keyup.enter="sendMessage"
@@ -81,7 +88,7 @@
                 @click="sendMessage"
                 title="发送"
               >
-                <el-icon :size="18"><Promotion /></el-icon>
+                <el-icon :size="16"><Promotion /></el-icon>
               </button>
             </template>
           </el-input>
@@ -93,11 +100,14 @@
 
 <script setup>
 import { ref, nextTick, watch } from 'vue'
-import { ChatDotRound, Close, Promotion, WarningFilled, Search } from '@element-plus/icons-vue'
-import { getOrCreateSession, streamChat, clearSession, getSessionMessages } from '../api/chat'
+import { storeToRefs } from 'pinia'
+import { ChatDotRound, Close, Promotion, WarningFilled, Search, Service, Reading } from '@element-plus/icons-vue'
+import { useChatStore } from '../stores/chat'
+import { getOrCreateSession, streamChat, getSessionMessages } from '../api/chat'
 
 // ---------- 状态 ----------
-const visible = ref(false)
+const chatStore = useChatStore()
+const { visible } = storeToRefs(chatStore)
 const messages = ref([])
 const inputText = ref('')
 const isTyping = ref(false)
@@ -109,29 +119,38 @@ const messagesContainer = ref(null)
 
 // ---------- 方法 ----------
 
-/** 打开聊天窗口 */
-async function openWidget() {
-  visible.value = true
-  hasUnread.value = false
-  errorMsg.value = ''
-
-  // 首次打开时创建会话并加载历史
-  if (!sessionId.value) {
-    try {
-      sessionId.value = await getOrCreateSession()
-      // 尝试恢复历史消息
-      const history = await getSessionMessages(sessionId.value)
-      if (history.length > 0) {
-        messages.value = history
-      }
-    } catch {
-      errorMsg.value = '连接客服服务失败，请稍后再试'
-    }
+/** 建立会话并恢复历史（打开时首次调用） */
+async function ensureSession() {
+  if (sessionId.value) return
+  try {
+    sessionId.value = await getOrCreateSession()
+    const history = await getSessionMessages(sessionId.value)
+    if (history.length > 0) messages.value = history
+  } catch {
+    errorMsg.value = '连接客服服务失败，请稍后再试'
   }
-
   await nextTick()
   scrollToBottom()
 }
+
+/** 欢迎态的示例问题：点一下直接发问 */
+const sampleAsks = [
+  '推荐几本值得读的小说',
+  '销量榜前三名是谁',
+  '《活着》还有库存吗',
+]
+async function ask(text) {
+  if (isTyping.value) return
+  inputText.value = text
+  await sendMessage()
+}
+
+watch(visible, (v) => {
+  if (!v) return
+  hasUnread.value = false
+  errorMsg.value = ''
+  ensureSession()
+})
 
 /** 发送消息 */
 async function sendMessage() {
@@ -141,7 +160,6 @@ async function sendMessage() {
   inputText.value = ''
   errorMsg.value = ''
 
-  // 确保有会话
   if (!sessionId.value) {
     try {
       sessionId.value = await getOrCreateSession()
@@ -151,21 +169,17 @@ async function sendMessage() {
     }
   }
 
-  // 添加用户消息
   messages.value.push({ role: 'user', content: text })
   await nextTick()
   scrollToBottom()
 
-  // 添加 AI 消息占位
   messages.value.push({ role: 'assistant', content: '' })
   const aiIndex = messages.value.length - 1
   isTyping.value = true
   toolStatus.value = ''
 
-  // 流式获取回复
   await streamChat(sessionId.value, text, {
     onToken(token) {
-      // 收到第一个 token 时清除 tool_status
       if (toolStatus.value) toolStatus.value = ''
       messages.value[aiIndex].content += token
       scrollToBottom()
@@ -181,7 +195,6 @@ async function sendMessage() {
     onError(err) {
       isTyping.value = false
       toolStatus.value = ''
-      // 如果 AI 消息为空，移除占位
       if (!messages.value[aiIndex].content) {
         messages.value.splice(aiIndex, 1)
       }
@@ -199,20 +212,15 @@ async function sendMessage() {
 function scrollToBottom() {
   nextTick(() => {
     const el = messagesContainer.value
-    if (el) {
-      el.scrollTop = el.scrollHeight
-    }
+    if (el) el.scrollTop = el.scrollHeight
   })
 }
 
-// 监听消息变化自动滚动
-watch(messages, () => {
-  scrollToBottom()
-}, { deep: true })
+watch(messages, () => scrollToBottom(), { deep: true })
 </script>
 
 <style scoped>
-/* ===== 浮动按钮 ===== */
+/* ===== 浮动按钮：Action Blue 圆形 ===== */
 .chat-toggle-btn {
   position: fixed;
   bottom: 24px;
@@ -220,34 +228,27 @@ watch(messages, () => {
   z-index: 9999;
   width: 56px;
   height: 56px;
+  background: var(--primary);
+  color: var(--on-primary);
   border: none;
   border-radius: 50%;
-  background: var(--primary, #3b82f6);
-  color: #fff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
-  transition: transform var(--transition, 0.25s ease), box-shadow var(--transition, 0.25s ease);
+  transition: background var(--transition), transform 0.15s ease;
 }
-.chat-toggle-btn:hover {
-  transform: scale(1.08);
-  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.55);
-}
-.chat-toggle-btn:active {
-  transform: scale(0.95);
-}
-
+.chat-toggle-btn:hover { background: var(--primary-focus); }
+.chat-toggle-btn:active { transform: scale(0.95); }
 .unread-dot {
   position: absolute;
   top: 6px;
   right: 6px;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--danger, #ef4444);
-  border: 2px solid #fff;
+  background: var(--on-primary);
+  border: 2px solid var(--primary);
 }
 
 /* ===== 聊天面板 ===== */
@@ -256,11 +257,12 @@ watch(messages, () => {
   bottom: 24px;
   right: 24px;
   z-index: 9999;
-  width: 380px;
-  height: 520px;
-  background: var(--white, #fff);
-  border-radius: var(--radius, 12px);
-  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0,0,0,0.15));
+  width: min(380px, calc(100vw - 32px));
+  height: min(560px, calc(100vh - 48px));
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -269,150 +271,162 @@ watch(messages, () => {
 /* ===== 头部 ===== */
 .chat-header {
   height: 60px;
-  padding: 0 16px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #3b82f6, #6366f1);
-  color: #fff;
+  background: var(--canvas-parchment);
+  border-bottom: 1px solid var(--hairline);
   flex-shrink: 0;
 }
-.chat-header-left {
+.chat-header-left { display: flex; align-items: center; gap: 12px; }
+.chat-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-.chat-avatar {
-  background: rgba(255,255,255,0.25) !important;
-  color: #fff !important;
+  justify-content: center;
+  flex-shrink: 0;
 }
 .chat-title {
-  font-size: 15px;
+  font-family: var(--font-display);
+  font-size: 17px;
   font-weight: 600;
+  letter-spacing: -0.374px;
+  color: var(--ink);
 }
 .chat-subtitle {
-  font-size: 11px;
-  opacity: 0.8;
-  margin-top: 1px;
+  font-family: var(--font-text);
+  font-size: 12px;
+  letter-spacing: -0.12px;
+  color: var(--ink-muted-80);
 }
 .chat-close-btn {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.15);
-  color: #fff;
+  border-radius: 50%;
+  background: rgba(210, 210, 215, 0.64);
+  color: var(--ink);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
 }
-.chat-close-btn:hover {
-  background: rgba(255,255,255,0.3);
-}
+.chat-close-btn:hover { background: rgba(190, 190, 195, 0.72); }
 
 /* ===== 消息区域 ===== */
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  background: var(--bg, #f8fafc);
+  gap: 12px;
+  background: var(--canvas);
 }
-.chat-messages::-webkit-scrollbar {
-  width: 4px;
-}
+.chat-messages::-webkit-scrollbar { width: 6px; }
 .chat-messages::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 2px;
+  background: var(--hairline);
+  border-radius: var(--radius-pill);
 }
 
 /* ===== 欢迎气泡 ===== */
-.welcome-bubble {
-  text-align: center;
-  padding: 20px 16px;
-}
+.welcome-bubble { text-align: center; padding: 24px 12px; }
 .welcome-icon {
-  font-size: 40px;
-  margin-bottom: 10px;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary);
+  color: var(--on-primary);
 }
 .welcome-text {
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.224px;
+  color: var(--ink-muted-80);
+}
+.asks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+.ask {
+  font-family: var(--font-text);
   font-size: 13px;
-  color: var(--text-secondary, #6b7280);
-  line-height: 1.7;
+  letter-spacing: -0.2px;
+  color: var(--ink-muted-80);
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition);
 }
-.welcome-text strong {
-  color: var(--primary, #3b82f6);
-}
+.ask:hover { border-color: var(--primary); color: var(--primary); }
+.ask:active { transform: scale(0.95); }
 
 /* ===== 消息气泡 ===== */
-.message-bubble {
-  display: flex;
-  max-width: 85%;
-}
-.message-user {
-  align-self: flex-end;
-}
-.message-assistant {
-  align-self: flex-start;
-}
+.message-bubble { display: flex; max-width: 85%; }
+.message-user { align-self: flex-end; }
+.message-assistant { align-self: flex-start; }
 .message-content {
-  padding: 10px 14px;
-  border-radius: 16px;
-  font-size: 13.5px;
-  line-height: 1.6;
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-text);
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: -0.24px;
   word-break: break-word;
   white-space: pre-wrap;
 }
 .message-user .message-content {
-  background: var(--primary, #3b82f6);
-  color: #fff;
-  border-bottom-right-radius: 4px;
+  background: var(--primary);
+  color: var(--on-primary);
+  border-bottom-right-radius: var(--radius-xs);
 }
 .message-assistant .message-content {
-  background: #fff;
-  color: var(--text, #1f2937);
-  border: 1px solid var(--border, #e5e7eb);
-  border-bottom-left-radius: 4px;
+  background: var(--canvas-parchment);
+  color: var(--ink);
+  border-bottom-left-radius: var(--radius-xs);
 }
 
-/* ===== 正在输入/工具状态动画 ===== */
-.typing-block {
-  align-self: flex-start;
-  max-width: 85%;
-}
+/* ===== 工具状态 / 正在输入 ===== */
+.typing-block { align-self: flex-start; max-width: 85%; }
 .tool-status {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 12px;
-  font-size: 12.5px;
-  color: #3b82f6;
+  background: var(--canvas-parchment);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-text);
+  font-size: 13px;
+  letter-spacing: -0.2px;
+  color: var(--ink-muted-80);
 }
-.tool-status .el-icon {
-  animation: spin 1.2s linear infinite;
-}
+.tool-status .el-icon { animation: spin 1.2s linear infinite; }
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-.typing-indicator {
-  display: flex;
-  gap: 4px;
-  padding: 4px 0;
-}
+.typing-indicator { display: flex; gap: 5px; padding: 8px 4px; }
 .typing-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #9ca3af;
-  animation: typing-dot 1.4s infinite;
+  background: var(--ink-muted-48);
+  animation: typing-dot 1.4s ease-in-out infinite;
 }
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
@@ -427,69 +441,61 @@ watch(messages, () => {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  background: #fef2f2;
-  border-radius: 12px;
-  color: #dc2626;
-  font-size: 12.5px;
+  padding: 8px 16px;
+  background: var(--ink);
+  color: var(--on-dark);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-text);
+  font-size: 13px;
+  letter-spacing: -0.2px;
 }
 
 /* ===== 输入区 ===== */
 .chat-input-area {
   padding: 12px 16px;
-  border-top: 1px solid var(--border, #e5e7eb);
-  background: #fff;
+  border-top: 1px solid var(--hairline);
+  background: var(--canvas);
   flex-shrink: 0;
 }
 .chat-input :deep(.el-input__wrapper) {
-  border-radius: 24px;
-  padding-right: 40px;
+  box-shadow: none;
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  padding: 4px 44px 4px 16px;
+  height: 40px;
+}
+.chat-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: none;
+  border-color: var(--primary);
 }
 .send-btn {
-  border: none;
-  background: var(--primary, #3b82f6);
-  color: #fff;
   width: 32px;
   height: 32px;
+  border: none;
   border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s, transform 0.15s;
+  transition: background var(--transition);
 }
-.send-btn:hover:not(:disabled) {
-  opacity: 0.9;
-}
-.send-btn:active:not(:disabled) {
-  transform: scale(0.92);
-}
+.send-btn:hover:not(:disabled) { background: var(--primary-focus); }
 .send-btn:disabled {
-  background: #cbd5e1;
+  background: var(--hairline);
+  color: var(--ink-muted-48);
   cursor: not-allowed;
 }
+.send-btn:focus-visible,
+.chat-toggle-btn:focus-visible { outline: 2px solid var(--primary-focus); outline-offset: 2px; }
+.chat-close-btn:focus-visible { outline: 2px solid var(--primary-focus); outline-offset: 2px; }
 
-/* ===== 过渡动画 ===== */
-.btn-fade-enter-active, .btn-fade-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-.btn-fade-enter-from, .btn-fade-leave-to {
-  opacity: 0;
-  transform: scale(0.8);
-}
-
-.panel-slide-enter-active {
-  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.panel-slide-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.panel-slide-enter-from {
-  opacity: 0;
-  transform: translateY(20px) scale(0.95);
-}
-.panel-slide-leave-to {
-  opacity: 0;
-  transform: translateY(10px) scale(0.97);
-}
+/* ===== 过渡 ===== */
+.btn-fade-enter-active, .btn-fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.btn-fade-enter-from, .btn-fade-leave-to { opacity: 0; transform: scale(0.9); }
+.panel-slide-enter-active { transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.panel-slide-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.panel-slide-enter-from, .panel-slide-leave-to { opacity: 0; transform: translateY(16px) scale(0.98); }
 </style>

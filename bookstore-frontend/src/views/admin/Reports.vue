@@ -2,7 +2,7 @@
   <div class="admin-page">
     <AdminSidebar />
     <div class="admin-main">
-      <h2>统计报表</h2>
+      <h2 class="page-title">统计报表</h2>
 
       <div class="filter-bar">
         <input type="date" v-model="startDate" class="native-date" />
@@ -17,7 +17,7 @@
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
         <el-input v-model="bookName" placeholder="书名" clearable style="width:140px" />
-        <el-button type="primary" @click="loadAll">查询</el-button>
+        <button class="pill small" @click="loadAll">查询</button>
       </div>
 
       <div class="summary-row" v-if="summary">
@@ -26,39 +26,40 @@
         <div class="summary-card"><div class="s-num">&yen;{{ summary.totalRevenue }}</div><div class="s-label">销售额</div></div>
       </div>
 
-      <div class="panel">
-        <h3>销售趋势（{{ periodText }}）</h3>
-        <el-table :data="trendData" border stripe empty-text="暂无数据" size="small">
-          <el-table-column label="周期" prop="period" width="120" />
-          <el-table-column label="订单数" prop="orderCount" width="100" align="center" />
-          <el-table-column label="销售额" align="center">
-            <template #default="{ row }">&yen;{{ row.totalSales }}</template>
-          </el-table-column>
-        </el-table>
-      </div>
+      <div class="panels">
+        <section class="admin-panel panel">
+          <h3 class="panel-title">销售趋势（{{ periodText }}）</h3>
+          <el-table :data="trendData" empty-text="暂无数据" size="small">
+            <el-table-column label="周期" prop="period" width="110" />
+            <el-table-column label="订单数" prop="orderCount" width="80" align="center" />
+            <el-table-column label="销售额" align="center">
+              <template #default="{ row }">&yen;{{ row.totalSales }}</template>
+            </el-table-column>
+          </el-table>
+        </section>
 
-      <div class="panel">
-        <h3>分类销售</h3>
-        <el-table :data="catData" border stripe empty-text="暂无数据" size="small">
-          <el-table-column label="分类" prop="categoryName" />
-          <el-table-column label="销量" prop="salesCount" width="100" align="center" />
-          <el-table-column label="销售额" width="140" align="center">
-            <template #default="{ row }">&yen;{{ row.totalRevenue }}</template>
-          </el-table-column>
-        </el-table>
-      </div>
+        <section class="admin-panel panel">
+          <h3 class="panel-title">分类销售</h3>
+          <el-table :data="catData" empty-text="暂无数据" size="small">
+            <el-table-column label="分类" prop="categoryName" min-width="90" />
+            <el-table-column label="销量" prop="salesCount" width="70" align="center" />
+            <el-table-column label="销售额" width="100" align="center">
+              <template #default="{ row }">&yen;{{ row.totalRevenue }}</template>
+            </el-table-column>
+          </el-table>
+        </section>
 
-      <div class="panel">
-        <h3>图书销量排行</h3>
-        <el-table :data="bookData" border stripe empty-text="暂无数据" size="small">
-          <el-table-column label="#" width="50" type="index" />
-          <el-table-column label="书名" prop="title" min-width="180" />
-          <el-table-column label="作者" prop="author" width="140" />
-          <el-table-column label="销量" prop="salesCount" width="80" align="center" />
-          <el-table-column label="销售额" width="120" align="center">
-            <template #default="{ row }">&yen;{{ row.totalRevenue }}</template>
-          </el-table-column>
-        </el-table>
+        <section class="admin-panel panel">
+          <h3 class="panel-title">图书销量排行</h3>
+          <el-table :data="bookData" empty-text="暂无数据" size="small">
+            <el-table-column label="#" width="44" type="index" />
+            <el-table-column label="书名" prop="title" min-width="120" show-overflow-tooltip />
+            <el-table-column label="销量" prop="salesCount" width="70" align="center" />
+            <el-table-column label="销售额" width="100" align="center">
+              <template #default="{ row }">&yen;{{ row.totalRevenue }}</template>
+            </el-table-column>
+          </el-table>
+        </section>
       </div>
     </div>
   </div>
@@ -71,7 +72,8 @@ import api from '../../api'
 import { getCategories } from '../../api/book'
 
 const now = new Date()
-const startDate = ref(fmt(new Date(now.getFullYear(), now.getMonth(), 1)))
+// 默认查最近一年
+const startDate = ref(fmt(new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())))
 const endDate = ref(fmt(now))
 const period = ref('monthly')
 const categoryId = ref(null)
@@ -121,20 +123,92 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.admin-page { display: flex; gap: 24px; }
-.admin-main { flex: 1; }
-.admin-main > h2 { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
-
-.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 24px; background: var(--white); padding: 16px 20px; border-radius: var(--radius); border: 1px solid var(--border); }
-
-.summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
-.summary-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 24px; text-align: center; }
-.s-num { font-size: 28px; font-weight: 800; color: var(--primary); }
-.s-label { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
-
-.native-date { border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 14px; color: var(--text); background: var(--white); outline: none; }
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+}
+.filter-label {
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink-muted-80);
+}
+.native-date {
+  padding: 8px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink);
+  outline: none;
+}
 .native-date:focus { border-color: var(--primary); }
 
-.panel { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; }
-.panel h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 24px;
+}
+.summary-card {
+  padding: 24px;
+  text-align: center;
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+}
+.s-num {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.47;
+  letter-spacing: -0.374px;
+  color: var(--ink);
+}
+.s-label {
+  margin-top: 6px;
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink-muted-80);
+}
+
+/* the three reports sit side by side so the page fits without wheel-scrolling */
+.panels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+  align-items: start;
+}
+.panel { margin-top: 0; }
+/* 表格体自带滚动：页面高度被钉死，数据再多也不整页滚动 */
+.panel :deep(.el-table__body-wrapper) {
+  max-height: min(320px, 34vh);
+  overflow-y: auto;
+}
+.panel-title {
+  padding: 16px 16px 0;
+  font-family: var(--font-text);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.374px;
+  color: var(--ink);
+}
+
+@media (max-width: 1068px) {
+  .panels { grid-template-columns: 1fr; }
+}
+@media (max-width: 833px) {
+  .summary-row { grid-template-columns: 1fr; gap: 16px; }
+}
 </style>

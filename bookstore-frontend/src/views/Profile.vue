@@ -1,41 +1,42 @@
 <template>
   <div class="profile-page">
-    <h2>个人中心</h2>
+    <h2 class="page-title">个人中心</h2>
 
     <el-tabs v-model="activeTab">
       <el-tab-pane label="个人信息" name="info">
-        <div class="form-card">
-          <el-form :model="profile" label-width="80px" label-position="top">
+        <div class="card">
+          <el-form :model="profile" label-position="top">
             <el-form-item label="用户名">
               <el-input v-model="profile.username" size="large" />
             </el-form-item>
             <el-form-item label="新密码（留空不修改）">
-              <el-input v-model="profile.password" type="password" size="large" show-password placeholder="留空则不修改密码" />
+              <el-input v-model="profile.password" type="password" size="large" show-password
+                placeholder="留空则不修改密码" />
             </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveProfile" :loading="saving">保存修改</el-button>
-            </el-form-item>
+            <button class="pill" type="button" :disabled="saving" @click="saveProfile">
+              {{ saving ? '保存中…' : '保存修改' }}
+            </button>
           </el-form>
         </div>
       </el-tab-pane>
 
       <el-tab-pane label="收货地址" name="address">
-        <div class="form-card">
-          <div class="addr-header">
-            <span>管理收货地址</span>
-            <el-button type="primary" size="small" @click="openAddAddr"><el-icon><Plus /></el-icon> 添加地址</el-button>
+        <div class="card">
+          <div class="addr-head">
+            <span class="sub-title">管理收货地址</span>
+            <button class="pill small" @click="openAddAddr">添加地址</button>
           </div>
 
           <div class="addr-list" v-if="addresses.length">
-            <div v-for="addr in addresses" :key="addr.id" class="addr-item" :class="{ default: addr.isDefault === 1 }">
+            <div v-for="addr in addresses" :key="addr.id" class="addr-item" :class="{ on: addr.isDefault === 1 }">
               <div class="addr-text">
-                <el-tag v-if="addr.isDefault === 1" type="danger" size="small" class="default-tag">默认</el-tag>
+                <span class="badge" v-if="addr.isDefault === 1">默认</span>
                 <span>{{ addr.address }}</span>
               </div>
               <div class="addr-actions">
-                <el-button v-if="addr.isDefault !== 1" size="small" @click="setDefault(addr.id)">设为默认</el-button>
-                <el-button size="small" @click="openEditAddr(addr)">编辑</el-button>
-                <el-button size="small" type="danger" @click="deleteAddr(addr.id)">删除</el-button>
+                <button v-if="addr.isDefault !== 1" class="link-btn" @click="setDefault(addr.id)">设为默认</button>
+                <button class="link-btn" @click="openEditAddr(addr)">编辑</button>
+                <button class="link-btn" @click="deleteAddr(addr.id)">删除</button>
               </div>
             </div>
           </div>
@@ -44,12 +45,13 @@
       </el-tab-pane>
     </el-tabs>
 
-    <!-- Address Dialog -->
     <el-dialog :title="editingAddr ? '编辑地址' : '新增地址'" v-model="addrDialog" width="500px" destroy-on-close>
       <el-input v-model="addrForm.address" type="textarea" :rows="3" placeholder="请输入收货人、电话及详细地址" />
       <template #footer>
-        <el-button @click="addrDialog=false">取消</el-button>
-        <el-button type="primary" @click="saveAddr" :loading="addrSaving">保存</el-button>
+        <button class="link-btn" @click="addrDialog = false">取消</button>
+        <button class="pill" :disabled="addrSaving" @click="saveAddr">
+          {{ addrSaving ? '保存中…' : '保存' }}
+        </button>
       </template>
     </el-dialog>
   </div>
@@ -66,7 +68,6 @@ const userStore = useUserStore()
 const activeTab = ref('info')
 const saving = ref(false)
 
-// Profile
 const profile = reactive({ username: '', password: '' })
 async function loadProfile() {
   const res = await getMe()
@@ -82,7 +83,6 @@ async function saveProfile() {
   } finally { saving.value = false }
 }
 
-// Addresses
 const addresses = ref([])
 const addrDialog = ref(false)
 const addrSaving = ref(false)
@@ -125,15 +125,99 @@ onMounted(() => { loadProfile(); loadAddresses() })
 </script>
 
 <style scoped>
-.profile-page { max-width: 720px; margin: 0 auto; }
-.profile-page h2 { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
-.form-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 28px 32px; }
+.profile-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+.card {
+  margin-top: 24px;
+  padding: 28px 32px;
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+}
 
-.addr-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.addr-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; transition: border-color 0.2s; }
-.addr-item.default { border-color: var(--danger); background: #fef2f2; }
-.addr-text { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 14px; }
-.default-tag { flex-shrink: 0; }
-.addr-actions { display: flex; gap: 6px; flex-shrink: 0; }
-.empty { text-align: center; color: var(--text-secondary); padding: 40px 0; }
+.addr-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.sub-title {
+  font-family: var(--font-text);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.374px;
+  color: var(--ink);
+}
+.addr-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px;
+  margin-bottom: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+}
+.addr-item.on { border-color: var(--primary); }
+.addr-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-text);
+  font-size: 17px;
+  letter-spacing: -0.374px;
+  color: var(--ink);
+}
+.badge {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-text);
+  font-size: 12px;
+  letter-spacing: -0.12px;
+  color: var(--ink-muted-80);
+}
+.addr-actions { display: flex; gap: 16px; flex-shrink: 0; }
+
+.empty {
+  padding: 40px 0;
+  text-align: center;
+  font-family: var(--font-text);
+  font-size: 17px;
+  color: var(--ink-muted-80);
+}
+
+:deep(.el-tabs__item) {
+  font-family: var(--font-text);
+  font-size: 17px;
+  letter-spacing: -0.374px;
+}
+:deep(.el-form-item__label) {
+  padding-bottom: 6px;
+  font-family: var(--font-text);
+  font-size: 14px;
+  letter-spacing: -0.224px;
+  color: var(--ink-muted-80);
+}
+:deep(.el-input__wrapper) {
+  padding: 4px 14px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 1px var(--hairline) inset;
+}
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px var(--primary-focus) inset;
+}
+
+@media (max-width: 833px) {
+  .profile-page { padding: 32px 20px 64px; }
+  .card { padding: 24px 20px; }
+}
 </style>

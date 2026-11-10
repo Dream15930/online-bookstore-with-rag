@@ -10,7 +10,6 @@ const routes = [
   { path: '/orders', name: 'Orders', component: () => import('../views/Orders.vue'), meta: { auth: true } },
   { path: '/profile', name: 'Profile', component: () => import('../views/Profile.vue'), meta: { auth: true } },
   { path: '/order/:id', name: 'OrderDetail', component: () => import('../views/OrderDetail.vue'), meta: { auth: true } },
-  { path: '/admin/login', name: 'AdminLogin', component: () => import('../views/admin/AdminLogin.vue') },
   { path: '/admin', name: 'AdminDashboard', component: () => import('../views/admin/Dashboard.vue'), meta: { auth: true, admin: true } },
   { path: '/admin/books', name: 'AdminBooks', component: () => import('../views/admin/BookManage.vue'), meta: { auth: true, admin: true } },
   { path: '/admin/orders', name: 'AdminOrders', component: () => import('../views/admin/OrderManage.vue'), meta: { auth: true, admin: true } },
@@ -31,7 +30,8 @@ router.beforeEach((to, from, next) => {
   }
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin'
   if (to.meta.admin && !isAdmin) {
-    return next('/admin/login')
+    // 非管理员撞到后台：静默回首页，不暴露后台的存在
+    return next('/')
   }
   next()
 })
